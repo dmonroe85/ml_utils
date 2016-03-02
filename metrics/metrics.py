@@ -1,3 +1,5 @@
+import numpy as np
+
 def correlation_matrix(input_data, targets):
     return [np.corrcoef(series, targets)[0,1] for series in transpose_list(input_data)]
 
@@ -48,3 +50,7 @@ information_gain.idx = 0
 
 def IG_matrix(input_data, targets):
     return [information_gain(series, targets) for series in [list(x) for x in zip(*input_data)]]
+
+def logloss(predictions, targets):
+    e = 10.0**(-15)
+    return -np.sum(targets*np.log(np.clip(predictions, e, 1.0-e)))

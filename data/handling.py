@@ -2,10 +2,10 @@ import sys, copy, numpy as np
 sys.path.append('../../')
 
 import csv
-from py_utils.utils import checkEqual
+from py_utils.utils import checkEqual, is_num
 
-def csv_to_row_dicts(filename, keys, display=False):
-    data = {}
+def csv_to_row_dicts(filename, keys=[], display=False):
+    data = {};  record_idx = 0
     with open(filename, 'r') as infile:
         csvreader = csv.reader(infile)
         headers = map(lambda x: x.lower(), csvreader.next())
@@ -13,58 +13,20 @@ def csv_to_row_dicts(filename, keys, display=False):
             print "Headers: %s" % sorted(headers)
 
         for row in csvreader:
-            keyval = ''; rowdict = {}
+            keyval = '' if keys else "%s" % record_idx
+            record_idx += 1
+            rowdict = {}
             for h, v in zip(headers, row):
                 rowdict[h] = v
-                if h in keys:
+                if keys and h in keys:
                     keyval += v
             data[keyval] = rowdict
-    return data, headers
-
-def compare_data(dict1, dict2, numeric_precision=2, display=False):
-    matched_data = {}
-    matches = 0; misses = 0
-    missing_fields = []
-    for key in dict1:
-        if key in dict2:
-            miss = False
-            pdata1 = dict1[key]
-            pdata2 = dict2[key]
-            for field in pdata1:
-                if field in pdata2:
-                    match = False
-                    # Limit the precision; checks will fail because of precision differences
-                    #   TODO: Need a way to set the precision
-                    try:
-                        match = \
-                            ("%.*f%%" % (numeric_precision, float(pdata1[field]))) == \
-                            ("%.*f%%" % (numeric_precision, float(pdata2[field])))
-                    except:
-                        match = pdata1[field] == pdata2[field]
-
-                    # Print the field that failed the check
-                    if not match:
-                        print field
-                        miss = True
-
-                elif field not in missing_fields:
-                    missing_fields.append(field)
-            if miss:
-                misses += 1
-                print pdata1
-                print pdata2
-            # Count and store the matched data into a new dictionary
-            else:
-                matches += 1
-                matched_data[key] = pdata1
 
     if display:
-        print "\nMatches: %s, Misses: %s" % (matches, misses)
-        print "Length of set 1: %s" % len(dict1.keys())
-        print "Length of set 2: %s" % len(dict2.keys())
-        print "Missing Fields: %s" % missing_fields
+        print "%s records in %s" % (len(data), filename)
 
-    return matched_data
+    return data, headers
+
 
 def remove_ignored(data, ignored=[], target_field=''):
     for entry in data:
@@ -72,7 +34,8 @@ def remove_ignored(data, ignored=[], target_field=''):
             if field in entry:
                 del entry[field]
 
-def get_targets(data, target_field, balance=False):
+
+def get_targets(data, target_field, balance=False, split_multiclass=False):
     if balance:
         # Second Pass, get target statistics
         target_groups = {}
@@ -106,10 +69,35 @@ def get_targets(data, target_field, balance=False):
         data = new_data
 
     # generate the array of targets
-    targets = []
+    targets = []; target_dict = {'Isurehopethiswillneverbearealclass': -1.0}
     for entry in data:
         if target_field and target_field in entry:
-            targets.append(int(entry[target_field]))
+            value = entry[target_field]
+            # 2-class numeric targets
+            if is_num(value):
+                targets.append(float(value))
+            # Multi-class and text-field targets
+            else:
+                if value not in target_dict:
+                    target_dict[value] = max(target_dict.values()) + 1.0
+
+                targets.append(target_dict[value])
+
             del entry[target_field]
 
     return data, np.array(targets)
+
+def split_multiclass(targets):
+    target_dict = {'Isurehopethiswillneverbearealclass': -1.0}
+    for value in targets:
+        if value not in target_dict:
+            target_dict[value] = max(target_dict.values()) + 1.0
+
+    target_matrix = []
+    L = int(max(target_dict.values()) + 1)
+    for value in targets:
+        row = [0.0] * L
+        row[int(value)] = 1.0
+        target_matrix.append(row)
+
+    return np.array(target_matrix)
