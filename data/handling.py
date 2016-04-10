@@ -4,7 +4,7 @@ sys.path.append('../../')
 import csv
 from py_utils.utils import checkEqual, is_num
 
-def csv_to_row_dicts(filename, keys=[], display=False):
+def csv_to_row_dicts(filename, keys=[], display=False, row_limit=0):
     data = {};  record_idx = 0
     with open(filename, 'r') as infile:
         csvreader = csv.reader(infile)
@@ -12,7 +12,7 @@ def csv_to_row_dicts(filename, keys=[], display=False):
         if display:
             print "Headers: %s" % sorted(headers)
 
-        for row in csvreader:
+        for idx, row in enumerate(csvreader):
             keyval = '' if keys else "%s" % record_idx
             record_idx += 1
             rowdict = {}
@@ -21,6 +21,9 @@ def csv_to_row_dicts(filename, keys=[], display=False):
                 if keys and h in keys:
                     keyval += v
             data[keyval] = rowdict
+
+            if row_limit and idx > row_limit:
+                break
 
     if display:
         print "%s records in %s" % (len(data), filename)

@@ -53,4 +53,4 @@ def IG_matrix(input_data, targets):
 
 def logloss(predictions, targets):
     e = 10.0**(-15)
-    return -np.sum(targets*np.log(np.clip(predictions, e, 1.0-e)))
+    return -np.sum(targets*np.log(np.clip(predictions, e, 1.0-e)))/targets.shape[0]
